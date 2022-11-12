@@ -174,7 +174,13 @@ try
                         PhysicalPath = 'PhysicalPath'
                     }
 
+                    $mockApplication = @{
+                        Website = 'Website'
+                        Name = 'Application'
+                    }
+
                     Mock -CommandName New-WebVirtualDirectory -MockWith { return $null }
+                    Mock -CommandName Get-WebApplication -MockWith { return $mockApplication }
 
                     Set-TargetResource -Website $mockSite.Website `
                         -WebApplication $mockSite.WebApplication `
@@ -196,7 +202,13 @@ try
                         PhysicalPath = 'PhysicalPath'
                     }
 
+                    $mockApplication = @{
+                        Website = 'Website'
+                        WebApplication = '/'
+                    }
+
                     Mock -CommandName New-WebVirtualDirectory -MockWith { return $null }
+                    Mock -CommandName Get-WebApplication -MockWith { return $mockApplication }
 
                     Set-TargetResource -Website $mockSite.Website `
                         -WebApplication $mockSite.WebApplication `
@@ -230,6 +242,32 @@ try
                         -Ensure 'Present'
 
                     Assert-MockCalled -CommandName Set-ItemProperty -Exactly 1
+                }
+            }
+
+            Context 'Ensure = Present and virtual directory does not exist and WebApplication does not exist' {
+                It 'Should fail validation WebApplication exists' {
+                    $mockSite = @{
+                        Name = 'SomeName'
+                        Website = 'Website'
+                        WebApplication = 'NonExistingWebApplication'
+                        PhysicalPath = 'PhysicalPath'
+                    }
+
+                    Mock -CommandName Get-WebApplication -MockWith { return $null }
+
+                    $setTargetResourceAction = {
+                        Set-TargetResource -Website $mockSite.Website `
+                            -WebApplication $mockSite.WebApplication `
+                            -Name $mockSite.Name `
+                            -PhysicalPath $mockSite.PhysicalPath `
+                            -Ensure 'Present' `
+                            -ErrorAction Stop
+                    }
+
+                    $ExpectedErrorMessage = ($script:localizedData.ErrorWebApplicationDoesNotExist -f $mockSite.WebApplication)
+                    $error = $setTargetResourceAction | Should -Throw -PassThru
+                    $error.Exception.Message | Should -Be $ExpectedErrorMessage
                 }
             }
 

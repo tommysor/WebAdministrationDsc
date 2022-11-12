@@ -7,4 +7,5 @@ ConvertFrom-StringData -StringData @'
     VerboseTestTargetFalse                 = Physical path '{0}' for Web Virtual Directory '{1}' is not in desired state.
     VerboseTestTargetTrue                  = Web Virtual Directory is in desired state.
     VerboseTestTargetAbsentTrue            = Web Virtual Directory '{0}' should be Absent and is Absent.
+    ErrorWebApplicationDoesNotExist        = Web Application '{0}' does not exist. Create it or use the default ('') application.
 '@

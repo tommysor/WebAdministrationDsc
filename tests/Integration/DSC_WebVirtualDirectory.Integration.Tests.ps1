@@ -279,6 +279,141 @@ try
         }
     }
 
+    Describe "$($script:dscResourceName)_CreateUpdateRemove_WebApplicationAndName" {
+
+        function Invoke-CreateUpdateRemove()
+        {
+            [CmdletBinding()]
+            param
+            (
+                [Parameter()]
+                $webApplication,
+                [Parameter()]
+                $name
+            )
+
+            configuration DSC_WebVirtualDirectory_Present
+            {
+                Import-DscResource -ModuleName WebAdministrationDsc
+
+                Node $AllNodes.NodeName
+                {
+                    WebVirtualDirectory WebVirtualDirectory
+                    {
+                        Ensure = 'Present'
+                        Website = $Node.Website
+                        WebApplication = $webApplication
+                        Name = $name
+                        PhysicalPath = $Node.PhysicalPath
+                    }
+                }
+            }
+
+            configuration DSC_WebVirtualDirectory_Absent
+            {
+                Import-DscResource -ModuleName WebAdministrationDsc
+
+                Node $AllNodes.NodeName
+                {
+                    WebVirtualDirectory WebVirtualDirectory
+                    {
+                        Ensure = 'Absent'
+                        Website = $Node.Website
+                        WebApplication = $webApplication
+                        Name = $name
+                        PhysicalPath = $Node.PhysicalPath
+                    }
+                }
+            }
+
+            function Get-VirtualDirectoryShortcut()
+            {
+                $got = Get-WebVirtualDirectory `
+                    -Site $DSCConfig.AllNodes.Website `
+                    -Application $webApplication `
+                    -Name $name
+                return $got
+            }
+
+            DSC_WebVirtualDirectory_Present `
+            -OutputPath $TestDrive `
+            -ConfigurationData $dscConfig
+
+            Reset-DscLcm
+
+            # 1. Add
+            Start-DscConfiguration `
+                -Path $TestDrive `
+                -ComputerName localhost `
+                -Wait `
+                -Verbose `
+                -Force `
+                -ErrorAction Stop
+
+            $result = Get-VirtualDirectoryShortcut
+            $result | Should Not BeNullOrEmpty
+
+            # 2. Update
+            Start-DscConfiguration `
+                -Path $TestDrive `
+                -ComputerName localhost `
+                -Wait `
+                -Verbose `
+                -Force `
+                -ErrorAction Stop
+
+            $result = Get-VirtualDirectoryShortcut
+            $result | Should Not BeNullOrEmpty
+
+            # 3. Remove
+            DSC_WebVirtualDirectory_Absent `
+            -OutputPath $TestDrive `
+            -ConfigurationData $dscConfig
+
+            Start-DscConfiguration `
+                -Path $TestDrive `
+                -ComputerName localhost `
+                -Wait `
+                -Verbose `
+                -Force `
+                -ErrorAction Stop
+
+            $result = Get-VirtualDirectoryShortcut
+            $result | Should BeNullOrEmpty
+        }
+
+        It 'Should work with application blank single name' -Test {
+            Invoke-CreateUpdateRemove '' 't1'
+        }
+
+        It 'Should work with application blank two name' -Test {
+            Invoke-CreateUpdateRemove '' 't2/t3'
+        }
+
+        It 'Should work with application blank three name' -Test {
+            Invoke-CreateUpdateRemove '' 't3/t4/t5'
+        }
+
+        It 'Should work with application exist one name' -Test {
+            Invoke-CreateUpdateRemove $DSCConfig.AllNodes.WebApplication 't4'
+        }
+
+        It 'Should work with application exist two name' -Test {
+            Invoke-CreateUpdateRemove $DSCConfig.AllNodes.WebApplication 't5/t6'
+        }
+
+        It 'Should work with application exist three name' -Test {
+            Invoke-CreateUpdateRemove $DSCConfig.AllNodes.WebApplication 't6/t7/t8'
+        }
+
+        It 'Should fail with application fake one name' -Test {
+            { Invoke-CreateUpdateRemove 'DummyApp' 't7' } | Should -Throw
+        }
+
+        It 'Should fail with application fake two name' -Test {
+            { Invoke-CreateUpdateRemove 'DummyApp' 't8/t9' } | Should -Throw
+        }
+    }
 }
 finally
 {

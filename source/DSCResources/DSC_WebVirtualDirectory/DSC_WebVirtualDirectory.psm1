@@ -121,6 +121,18 @@ function Set-TargetResource
         if ($virtualDirectory.count -eq 0)
         {
             Write-Verbose -Message ($script:localizedData.VerboseSetTargetCreateVirtualDirectory -f $Name)
+
+            <#
+                Validate that WebApplication exists.
+                If it does not exist then New-WebVirtualDirectory will succeed,
+                but Get-WebVirtualDirectory will not be able to find it.
+            #>
+            $WebApplicationExisting = Get-WebApplication -Site $Website -Name $WebApplication
+            if (-Not $WebApplicationExisting)
+            {
+                Throw ($script:localizedData.ErrorWebApplicationDoesNotExist -f $WebApplication)
+            }
+
             New-WebVirtualDirectory -Site $Website `
                                     -Application $WebApplication `
                                     -Name $Name `
